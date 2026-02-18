@@ -1,0 +1,21 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output (keep structure, ignore large renders)
+R/output/*.png
+R/output/*.svg

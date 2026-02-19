@@ -103,7 +103,9 @@ long <- raw %>%
     group_id = if_else(is.na(group_id),
                        paste0(group_letter, ") ", str_trunc(group_name, 40)),
                        group_id)
-  )
+  ) %>%
+  # Safety: strip residual OCR transposition artefacts (e.g. "373 00") from group labels
+  mutate(group_id = str_squish(str_remove(group_id, "\\s*\\d{3}\\s+\\d{2}\\s*$")))
 
 # ── Colour scales ─────────────────────────────────────────────────────────────
 level_colours <- c(
@@ -275,6 +277,150 @@ p_change <- ggplot(pct_change,
     legend.position    = "right"
   )
 
+# ============================================================================
+# INDEXED PLOTS  (2022 = 100)
+# Standardise each group×level salary so 2022 = 100, then track development.
+# A Swedish CPIF reference line (Oct-to-Oct) is overlaid for comparison.
+# ============================================================================
+
+# ── Swedish CPIF reference (Oct-to-Oct, base Oct 2022 = 100) ─────────────────
+# Source: Statistics Sweden (SCB), CPIF (inflation excl. mortgage interest)
+# Oct22→Oct23: +6.5 %   Oct23→Oct24: +1.6 %   Oct24→Oct25: +1.2 % (prelim.)
+cpif <- tibble(
+  year  = 2022:2025,
+  cpif  = c(100.0,
+            100.0 * 1.065,
+            100.0 * 1.065 * 1.016,
+            100.0 * 1.065 * 1.016 * 1.012)
+)
+
+# ── Build indexed long dataset ────────────────────────────────────────────────
+# Use an explicit left_join on the 2022 baseline so groups without a 2022 value
+# (e.g. Sahlgrenska/IT individuell 100%-level) are cleanly excluded.
+base_year <- long %>%
+  filter(year == 2022) %>%
+  select(faculty_short, group_id, level, base_salary = salary)
+
+indexed <- long %>%
+  left_join(base_year, by = c("faculty_short", "group_id", "level")) %>%
+  filter(!is.na(base_salary)) %>%
+  mutate(index = salary / base_salary * 100)
+
+# ── Faculty colour palette (consistent across indexed plots) ──────────────────
+faculty_colours <- c(
+  "Sahlgrenska"                            = GU_BLUE,
+  "Nat.sci / IT"                           = GU_CYAN,
+  "Humanities / Soc.sci / Arts / Business" = GU_TEAL,
+  "Education"                              = GU_YELLOW
+)
+
+# ============================================================================
+# PLOT 4 – Indexed salary at 80% level, all groups, with CPIF reference
+# ============================================================================
+p_index_80 <- indexed %>%
+  filter(level == "80%") %>%
+  ggplot(aes(x = year, y = index,
+             colour = faculty_short, group = group_id)) +
+  # CPIF band / reference line drawn first (behind salary lines)
+  geom_line(data = cpif, aes(x = year, y = cpif),
+            inherit.aes = FALSE,
+            colour = GU_RED, linewidth = 1.1, linetype = "dashed") +
+  annotate("text", x = 2025.05, y = cpif$cpif[4] + 0.4,
+           label = "CPIF\n(inflation)", hjust = 0, size = 2.8,
+           colour = GU_RED, lineheight = 0.9) +
+  geom_line(linewidth = 0.8, alpha = 0.8) +
+  geom_point(size = 2) +
+  # Label each line at 2025
+  geom_text_repel(
+    data = indexed %>% filter(level == "80%", year == 2025),
+    aes(label = group_id),
+    hjust = 0, nudge_x = 0.1, size = 2.6, direction = "y",
+    segment.size = 0.25, segment.colour = GU_GREY,
+    show.legend = FALSE
+  ) +
+  geom_hline(yintercept = 100, linetype = "dotted", colour = GU_GREY, linewidth = 0.5) +
+  scale_x_continuous(breaks = 2022:2025, limits = c(2022, 2027.2)) +
+  scale_y_continuous(
+    labels = function(x) paste0(x),
+    breaks = seq(98, 116, by = 2)
+  ) +
+  scale_colour_manual(values = faculty_colours, name = "Faculty") +
+  labs(
+    title    = "Indexed PhD salary at 80% completion vs. inflation \u2013 GU 2022\u20132025",
+    subtitle = "Index: 2022 = 100 per group. Dashed red = Swedish CPIF (Oct-to-Oct).",
+    x        = NULL,
+    y        = "Index (2022 = 100)",
+    caption  = "Source: GU salary agreements; SCB CPIF (Oct-to-Oct). 2025 CPIF preliminary."
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title       = element_text(face = "bold", colour = GU_BLUE, size = 13),
+    plot.subtitle    = element_text(colour = GU_GREY, margin = margin(b = 10)),
+    plot.caption     = element_text(colour = GU_GREY, size = 8),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(colour = GU_LIGHTGREY),
+    legend.position  = "bottom",
+    legend.title     = element_text(face = "bold", size = 9),
+    axis.text        = element_text(colour = GU_GREY)
+  )
+
+# ============================================================================
+# PLOT 5 – Indexed salary, all levels, faceted by faculty  (with CPIF)
+# Each panel shows every group×level combination for that faculty.
+# ============================================================================
+make_index_faculty_plot <- function(fac_label) {
+  d        <- indexed %>% filter(faculty_short == fac_label)
+  n_groups <- n_distinct(d$group_id)
+
+  group_colours <- setNames(
+    colorRampPalette(c(GU_BLUE, GU_CYAN, GU_TEAL, GU_RED, GU_YELLOW, GU_GREY))(n_groups),
+    unique(d$group_id)
+  )
+
+  ggplot(d, aes(x = year, y = index,
+                colour = group_id, linetype = level,
+                group = interaction(group_id, level))) +
+    geom_line(data = cpif, aes(x = year, y = cpif),
+              inherit.aes = FALSE,
+              colour = GU_RED, linewidth = 0.9, linetype = "dashed", alpha = 0.7) +
+    geom_hline(yintercept = 100, linetype = "dotted", colour = GU_GREY, linewidth = 0.4) +
+    geom_line(linewidth = 0.65, alpha = 0.85) +
+    geom_point(size = 1.6) +
+    scale_x_continuous(breaks = 2022:2025) +
+    scale_y_continuous(labels = function(x) paste0(x),
+                       breaks = seq(98, 118, by = 2)) +
+    scale_colour_manual(values = group_colours, name = "Group") +
+    scale_linetype_manual(values = level_linetypes, name = "Level") +
+    labs(title = fac_label, x = NULL, y = "Index (2022 = 100)") +
+    theme_minimal(base_size = 10) +
+    theme(
+      plot.title       = element_text(face = "bold", colour = GU_BLUE, size = 11),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(colour = GU_LIGHTGREY),
+      legend.position  = "right",
+      legend.key.width = unit(1.2, "cm"),
+      legend.text      = element_text(size = 7),
+      legend.title     = element_text(size = 8, face = "bold")
+    )
+}
+
+index_plots_by_faculty <- map(faculties_ordered, make_index_faculty_plot)
+
+p_index_detail <- wrap_plots(index_plots_by_faculty, ncol = 2) +
+  plot_annotation(
+    title    = "Indexed PhD salary (all levels) vs. inflation \u2013 GU 2022\u20132025",
+    subtitle = "Index: 2022 = 100 per group \u00d7 level. Dashed red = Swedish CPIF (Oct-to-Oct).",
+    caption  = paste0(
+      "Source: GU salary agreements; SCB CPIF Oct-to-Oct: +6.5% (2023), +1.6% (2024), +1.2% (2025 prelim.).\n",
+      "Note: 2022 Sahlgrenska 100%-level was individual \u2014 no baseline, excluded from index."
+    ),
+    theme = theme(
+      plot.title    = element_text(face = "bold", colour = GU_BLUE, size = 14),
+      plot.subtitle = element_text(colour = GU_GREY),
+      plot.caption  = element_text(colour = GU_GREY, size = 7.5)
+    )
+  )
+
 # ── Save outputs ──────────────────────────────────────────────────────────────
 # Use png/svg devices directly to avoid a ggplot2 3.5.1 add_guides bug with ggsave.
 save_plot <- function(p, filename, width_in, height_in, dpi = 180) {
@@ -291,8 +437,10 @@ save_plot <- function(p, filename, width_in, height_in, dpi = 180) {
   message("Saved: ", png_path)
 }
 
-save_plot(p_overview, "01_overview_80pct",       width_in = 13, height_in = 9)
-save_plot(p_detail,   "02_detail_all_levels",     width_in = 15, height_in = 11)
-save_plot(p_change,   "03_pct_increase_2022_2025", width_in = 11, height_in = 7)
+save_plot(p_overview,      "01_overview_80pct",            width_in = 13, height_in = 9)
+save_plot(p_detail,        "02_detail_all_levels",         width_in = 15, height_in = 11)
+save_plot(p_change,        "03_pct_increase_2022_2025",    width_in = 11, height_in = 7)
+save_plot(p_index_80,      "04_index_80pct_vs_cpif",       width_in = 13, height_in = 8)
+save_plot(p_index_detail,  "05_index_all_levels_vs_cpif",  width_in = 15, height_in = 11)
 
 message("\nDone! All plots saved to: ", output_dir)

@@ -150,6 +150,8 @@ def flush_group(group: dict, rows: list) -> None:
     for s in salaries:
         name = name.replace(s, '')
     name = re.sub(r'\bindividuellt\b', '', name, flags=re.IGNORECASE)
+    # Strip residual OCR transposition artefacts e.g. '373 00' from a mis-split '37 300'
+    name = re.sub(r'\s*\d{3}\s+\d{2}\s*$', '', name).strip()
     name = re.sub(r'\s+', ' ', name).strip()
 
     vals = [parse_int(s) for s in salaries]

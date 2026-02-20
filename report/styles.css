@@ -1,0 +1,4 @@
+h1, h2, h3 { color: #003B6F; }
+h1 { border-bottom: 3px solid #00B0D8; padding-bottom: 0.4rem; }
+.callout-note { border-left-color: #00B0D8 !important; }
+caption, .caption { color: #6D7278; font-style: italic; }

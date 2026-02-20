@@ -544,4 +544,111 @@ p_spotlight <- ggplot() +
 
 save_plot(p_spotlight, "06_spotlight_ovriga_hum_socsci", width_in = 12, height_in = 9)
 
+# ============================================================================
+# PLOT 7 – Spotlight (absolute SEK): "Övriga doktorander" in Hum / Soc.sci
+#          Same layout as Plot 6 but y-axis = actual monthly salary in SEK.
+#          CPIF reference is the 2022 baseline salary × cumulative inflation.
+# ============================================================================
+
+# Build per-level CPIF reference in SEK from the Övriga 2022 baseline salary
+ovriga_base_sek <- long %>%
+  filter(
+    faculty_short == HIGHLIGHT_FACULTY,
+    str_detect(group_id, regex("\u00d6vriga|\u00f6vriga|Ovriga|ovriga", ignore_case = TRUE)),
+    year == 2022
+  ) %>%
+  select(level, base_salary = salary)
+
+cpif_sek <- ovriga_base_sek %>%
+  crossing(cpif) %>%
+  mutate(cpif_salary = base_salary * cpif / 100)
+
+spotlight_sek <- long %>%
+  mutate(
+    is_highlight = faculty_short == HIGHLIGHT_FACULTY &
+                   str_detect(group_id, regex("\u00d6vriga|\u00f6vriga|Ovriga|ovriga", ignore_case = TRUE))
+  )
+
+spotlight_sek_labels <- spotlight_sek %>%
+  filter(is_highlight, year == 2025)
+
+p_spotlight_sek <- ggplot() +
+  # ── Gray background: all other groups ──────────────────────────────────────
+  geom_line(
+    data    = spotlight_sek %>% filter(!is_highlight),
+    mapping = aes(x = year, y = salary,
+                  group = interaction(faculty_short, group_id, level)),
+    colour  = "#CCCCCC", linewidth = 0.4, alpha = 0.85
+  ) +
+  # ── CPIF reference line (inflation-adjusted 2022 salary) ───────────────────
+  geom_line(
+    data    = cpif_sek,
+    mapping = aes(x = year, y = cpif_salary, group = level),
+    inherit.aes = FALSE,
+    colour  = GU_RED, linewidth = 1.0, linetype = "dashed"
+  ) +
+  # ── Highlighted group ───────────────────────────────────────────────────────
+  geom_line(
+    data    = spotlight_sek %>% filter(is_highlight),
+    mapping = aes(x = year, y = salary,
+                  group = interaction(faculty_short, group_id, level)),
+    colour  = GU_BLUE, linewidth = 1.3
+  ) +
+  geom_point(
+    data    = spotlight_sek %>% filter(is_highlight),
+    mapping = aes(x = year, y = salary),
+    colour  = GU_BLUE, size = 2.8
+  ) +
+  # ── Salary label at 2025 ────────────────────────────────────────────────────
+  geom_label(
+    data    = spotlight_sek_labels,
+    mapping = aes(x = year, y = salary,
+                  label = paste0(format(salary, big.mark = "\u00a0", scientific = FALSE), " kr")),
+    hjust   = -0.08, size = 3.0, colour = GU_BLUE,
+    fill    = "white", linewidth = 0.3, label.padding = unit(0.18, "lines"),
+    label.r = unit(0.1, "lines")
+  ) +
+  # ── CPIF label (once, in the 0% panel only) ─────────────────────────────── 
+  geom_label(
+    data    = cpif_sek %>% filter(year == 2025, level == "0%"),
+    mapping = aes(x = year, y = cpif_salary, label = "CPIF\nbaseline"),
+    hjust   = -0.08, size = 2.6, colour = GU_RED,
+    fill    = "white", linewidth = 0.3, label.padding = unit(0.15, "lines"),
+    label.r = unit(0.1, "lines")
+  ) +
+  facet_wrap(
+    ~ level, ncol = 2, scales = "free_y",
+    labeller = as_labeller(level_labels)
+  ) +
+  scale_x_continuous(breaks = 2022:2025, limits = c(2022, 2026.2)) +
+  scale_y_continuous(
+    labels = function(x) paste0(format(x, big.mark = "\u00a0", scientific = FALSE), " kr")
+  ) +
+  labs(
+    title    = "Spotlight: \u00d6vriga doktorander \u2013 Humanities / Soc.sci / Arts / Business",
+    subtitle = paste0(
+      "Monthly salary in SEK. \u2014  ",
+      "\u25ac\u25ac Blue = \u00d6vriga doktorander (Hum/Soc.sci)    ",
+      "\u25ac\u25ac Red dashed = 2022 salary \u00d7 CPIF (inflation baseline)    ",
+      "\u25ac\u25ac Gray = all other PhD groups"
+    ),
+    x       = NULL,
+    y       = "Monthly salary (SEK)",
+    caption = "Source: GU salary agreements; SCB CPIF Oct-to-Oct: +6.5% (2023), +1.6% (2024), +1.2% (2025 prelim.)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title        = element_text(face = "bold", colour = GU_BLUE, size = 14),
+    plot.subtitle     = element_text(colour = GU_GREY, size = 9, margin = margin(b = 10)),
+    plot.caption      = element_text(colour = GU_GREY, size = 8),
+    strip.text        = element_text(face = "bold", colour = GU_BLUE, size = 11),
+    strip.background  = element_rect(fill = GU_LIGHTGREY, colour = NA),
+    panel.grid.minor  = element_blank(),
+    panel.grid.major  = element_line(colour = GU_LIGHTGREY),
+    axis.text         = element_text(colour = GU_GREY),
+    axis.title.y      = element_text(colour = GU_GREY, margin = margin(r = 8))
+  )
+
+save_plot(p_spotlight_sek, "07_spotlight_ovriga_hum_socsci_sek", width_in = 12, height_in = 9)
+
 message("\nDone! All plots saved to: ", output_dir)

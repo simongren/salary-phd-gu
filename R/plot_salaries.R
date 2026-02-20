@@ -65,16 +65,25 @@ faculty_map <- tribble(
 )
 
 # ── Build a group_id for cross-year continuity ────────────────────────────────
-# Within NATURVETENSKAP / IT, map letters to consistent group descriptions
-# (In 2025, IT moved from its own faculty to letter C in the merged faculty.)
+# Maps (faculty_raw, group_letter) → canonical group_id so that OCR artefacts
+# in 2025 group names don't create phantom new groups.
+# Sahlgrenska group names are particularly affected by OCR (ö→o, Ö→G, etc.).
 natit_group_map <- tribble(
   ~faculty_raw,                                            ~group_letter, ~group_id,
+  # NatSci / IT (2022–2024 separate faculties → 2025 merged)
   "NATURVETENSKAPLIGA FAKULTETEN",                         "A",           "NatSci – Fysik/Matematik",
-  "NATURVETENSKAPLIGA FAKULTETEN",                         "B",           "NatSci – Övriga",
+  "NATURVETENSKAPLIGA FAKULTETEN",                         "B",           "NatSci – \u00d6vriga",
   "IT-FAKULTETEN",                                         "A",           "IT – Samtliga",
   "FAKULTETEN f\u00f6r NATURVETENSKAP o TEKNIK",          "A",           "NatSci – Fysik/Matematik",
-  "FAKULTETEN f\u00f6r NATURVETENSKAP o TEKNIK",          "B",           "NatSci – Övriga",
-  "FAKULTETEN f\u00f6r NATURVETENSKAP o TEKNIK",          "C",           "IT – Samtliga"
+  "FAKULTETEN f\u00f6r NATURVETENSKAP o TEKNIK",          "B",           "NatSci – \u00d6vriga",
+  "FAKULTETEN f\u00f6r NATURVETENSKAP o TEKNIK",          "C",           "IT – Samtliga",
+  # Sahlgrenska (group names garbled by OCR in 2025)
+  "SAHLGRENSKA AKADEMIN",                                  "A",           "Sahlgrenska A – Medicinsk basvet.",
+  "SAHLGRENSKA AKADEMIN",                                  "B",           "Sahlgrenska B – Medicinsk basvet. m. l\u00e4karex.",
+  "SAHLGRENSKA AKADEMIN",                                  "C",           "Sahlgrenska C – Medicinsk basvet. leg. l\u00e4kare",
+  "SAHLGRENSKA AKADEMIN",                                  "D",           "Sahlgrenska D – \u00d6vriga",
+  "SAHLGRENSKA AKADEMIN",                                  "E",           "Sahlgrenska E – \u00d6vriga m. l\u00e4karex.",
+  "SAHLGRENSKA AKADEMIN",                                  "F",           "Sahlgrenska F – \u00d6vriga leg. l\u00e4kare"
 )
 
 # ── Pivot to long format ──────────────────────────────────────────────────────

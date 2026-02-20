@@ -156,7 +156,7 @@ p_overview <- long %>%
     segment.color = GU_GREY,
     show.legend  = FALSE
   ) +
-  facet_wrap(~ faculty_short, scales = "free_y", ncol = 2) +
+  facet_wrap(~ faculty_short, ncol = 2) +
   scale_x_continuous(breaks = 2022:2025, limits = c(2022, 2026.5)) +
   scale_y_continuous(labels = label_number(big.mark = "\u00a0", suffix = " kr")) +
   labs(

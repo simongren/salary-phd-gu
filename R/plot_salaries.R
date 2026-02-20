@@ -289,18 +289,19 @@ p_change <- ggplot(pct_change,
 # ============================================================================
 # INDEXED PLOTS  (2022 = 100)
 # Standardise each group×level salary so 2022 = 100, then track development.
-# A Swedish CPIF reference line (Oct-to-Oct) is overlaid for comparison.
+# A Swedish KPI reference line (Oct-to-Oct) is overlaid for comparison.
 # ============================================================================
 
-# ── Swedish CPIF reference (Oct-to-Oct, base Oct 2022 = 100) ─────────────────
-# Source: Statistics Sweden (SCB), CPIF (inflation excl. mortgage interest)
-# Oct22→Oct23: +6.5 %   Oct23→Oct24: +1.6 %   Oct24→Oct25: +1.2 % (prelim.)
+# ── Swedish KPI reference (Oct-to-Oct, base Oct 2022 = 100) ──────────────────
+# Source: Statistics Sweden (SCB), KPI skuggindex (Consumer Price Index)
+# Oct-to-Oct index values: Oct22=114.32, Oct23=121.77, Oct24=123.69, Oct25=124.83
+# Oct22→Oct23: +6.5 %   Oct23→Oct24: +1.6 %   Oct24→Oct25: +0.9 %
 cpif <- tibble(
   year  = 2022:2025,
   cpif  = c(100.0,
-            100.0 * 1.065,
-            100.0 * 1.065 * 1.016,
-            100.0 * 1.065 * 1.016 * 1.012)
+            100.0 * 121.77 / 114.32,   # +6.5 %
+            100.0 * 123.69 / 114.32,   # +1.6 % cumulative: +8.2 %
+            100.0 * 124.83 / 114.32)   # +0.9 % cumulative: +9.2 %
 )
 
 # ── Build indexed long dataset ────────────────────────────────────────────────
@@ -324,18 +325,18 @@ faculty_colours <- c(
 )
 
 # ============================================================================
-# PLOT 4 – Indexed salary at 80% level, all groups, with CPIF reference
+# PLOT 4 – Indexed salary at 80% level, all groups, with KPI reference
 # ============================================================================
 p_index_80 <- indexed %>%
   filter(level == "80%") %>%
   ggplot(aes(x = year, y = index,
              colour = faculty_short, group = group_id)) +
-  # CPIF band / reference line drawn first (behind salary lines)
+  # KPI reference line drawn first (behind salary lines)
   geom_line(data = cpif, aes(x = year, y = cpif),
             inherit.aes = FALSE,
             colour = GU_RED, linewidth = 1.1, linetype = "dashed") +
   annotate("text", x = 2025.05, y = cpif$cpif[4] + 0.4,
-           label = "CPIF\n(inflation)", hjust = 0, size = 2.8,
+           label = "KPI\n(inflation)", hjust = 0, size = 2.8,
            colour = GU_RED, lineheight = 0.9) +
   geom_line(linewidth = 0.8, alpha = 0.8) +
   geom_point(size = 2) +
@@ -356,10 +357,10 @@ p_index_80 <- indexed %>%
   scale_colour_manual(values = faculty_colours, name = "Faculty") +
   labs(
     title    = "Indexed PhD salary at 80% completion vs. inflation \u2013 GU 2022\u20132025",
-    subtitle = "Index: 2022 = 100 per group. Dashed red = Swedish CPIF (Oct-to-Oct).",
+    subtitle = "Index: 2022 = 100 per group. Dashed red = Swedish KPI (Oct-to-Oct).",
     x        = NULL,
     y        = "Index (2022 = 100)",
-    caption  = "Source: GU salary agreements; SCB CPIF (Oct-to-Oct). 2025 CPIF preliminary."
+    caption  = "Source: GU salary agreements; SCB KPI skuggindex Oct-to-Oct: +6.5% (2023), +1.6% (2024), +0.9% (2025)."
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -374,7 +375,7 @@ p_index_80 <- indexed %>%
   )
 
 # ============================================================================
-# PLOT 5 – Indexed salary, all levels, faceted by faculty  (with CPIF)
+# PLOT 5 – Indexed salary, all levels, faceted by faculty  (with KPI)
 # Each panel shows every group×level combination for that faculty.
 # ============================================================================
 make_index_faculty_plot <- function(fac_label) {
@@ -418,9 +419,9 @@ index_plots_by_faculty <- map(faculties_ordered, make_index_faculty_plot)
 p_index_detail <- wrap_plots(index_plots_by_faculty, ncol = 2) +
   plot_annotation(
     title    = "Indexed PhD salary (all levels) vs. inflation \u2013 GU 2022\u20132025",
-    subtitle = "Index: 2022 = 100 per group \u00d7 level. Dashed red = Swedish CPIF (Oct-to-Oct).",
+    subtitle = "Index: 2022 = 100 per group \u00d7 level. Dashed red = Swedish KPI (Oct-to-Oct).",
     caption  = paste0(
-      "Source: GU salary agreements; SCB CPIF Oct-to-Oct: +6.5% (2023), +1.6% (2024), +1.2% (2025 prelim.).\n",
+      "Source: GU salary agreements; SCB KPI skuggindex Oct-to-Oct: +6.5% (2023), +1.6% (2024), +0.9% (2025).\n",
       "Note: 2022 Sahlgrenska 100%-level was individual \u2014 no baseline, excluded from index."
     ),
     theme = theme(
@@ -454,7 +455,7 @@ save_plot(p_index_detail,  "05_index_all_levels_vs_cpif",  width_in = 15, height
 
 # ============================================================================
 # PLOT 6 – Spotlight: "\u00d6vriga doktorander" in Humanities / Soc.sci
-#          Gray = all other groups; blue = highlighted group; red = CPIF.
+#          Gray = all other groups; blue = highlighted group; red = KPI.
 #          Four panels (one per salary level), indexed 2022 = 100.
 # ============================================================================
 HIGHLIGHT_FACULTY <- "Humanities / Soc.sci / Arts / Business"
@@ -480,7 +481,7 @@ p_spotlight <- ggplot() +
                   group = interaction(faculty_short, group_id, level)),
     colour  = "#CCCCCC", linewidth = 0.4, alpha = 0.85
   ) +
-  # ── CPIF reference line ─────────────────────────────────────────────────────
+  # ── KPI reference line ──────────────────────────────────────────────────────
   geom_line(
     data    = cpif,
     mapping = aes(x = year, y = cpif),
@@ -509,10 +510,10 @@ p_spotlight <- ggplot() +
     fill    = "white", linewidth = 0.3, label.padding = unit(0.18, "lines"),
     label.r = unit(0.1, "lines")
   ) +
-  # ── CPIF label (once, in the first panel only) ───────────────────────────── 
+  # ── KPI label (once, in the first panel only) ───────────────────────────── 
   geom_label(
     data    = cpif %>% filter(year == 2025) %>% mutate(level = factor("0%", levels = levels(indexed$level))),
-    mapping = aes(x = year, y = cpif, label = "CPIF"),
+    mapping = aes(x = year, y = cpif, label = "KPI"),
     hjust   = -0.12, size = 2.8, colour = GU_RED,
     fill    = "white", linewidth = 0.3, label.padding = unit(0.15, "lines"),
     label.r = unit(0.1, "lines")
@@ -531,12 +532,12 @@ p_spotlight <- ggplot() +
     subtitle = paste0(
       "Index 2022 = 100. \u2014  ",
       "\u25ac\u25ac Blue = \u00d6vriga doktorander (Hum/Soc.sci)    ",
-      "\u25ac\u25ac Red dashed = CPIF (inflation)    ",
+      "\u25ac\u25ac Red dashed = KPI (inflation)    ",
       "\u25ac\u25ac Gray = all other PhD groups"
     ),
     x       = NULL,
     y       = "Index (2022 = 100)",
-    caption = "Source: GU salary agreements; SCB CPIF Oct-to-Oct: +6.5% (2023), +1.6% (2024), +1.2% (2025 prelim.)"
+    caption = "Source: GU salary agreements; SCB KPI skuggindex Oct-to-Oct: +6.5% (2023), +1.6% (2024), +0.9% (2025)"
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -556,10 +557,10 @@ save_plot(p_spotlight, "06_spotlight_ovriga_hum_socsci", width_in = 12, height_i
 # ============================================================================
 # PLOT 7 – Spotlight (absolute SEK): "Övriga doktorander" in Hum / Soc.sci
 #          Same layout as Plot 6 but y-axis = actual monthly salary in SEK.
-#          CPIF reference is the 2022 baseline salary × cumulative inflation.
+#          KPI reference is the 2022 baseline salary × cumulative inflation.
 # ============================================================================
 
-# Build per-level CPIF reference in SEK from the Övriga 2022 baseline salary
+# Build per-level KPI reference in SEK from the Övriga 2022 baseline salary
 ovriga_base_sek <- long %>%
   filter(
     faculty_short == HIGHLIGHT_FACULTY,
@@ -589,7 +590,7 @@ p_spotlight_sek <- ggplot() +
                   group = interaction(faculty_short, group_id, level)),
     colour  = "#CCCCCC", linewidth = 0.4, alpha = 0.85
   ) +
-  # ── CPIF reference line (inflation-adjusted 2022 salary) ───────────────────
+  # ── KPI reference line (inflation-adjusted 2022 salary) ────────────────────
   geom_line(
     data    = cpif_sek,
     mapping = aes(x = year, y = cpif_salary, group = level),
@@ -617,10 +618,10 @@ p_spotlight_sek <- ggplot() +
     fill    = "white", linewidth = 0.3, label.padding = unit(0.18, "lines"),
     label.r = unit(0.1, "lines")
   ) +
-  # ── CPIF label (once, in the 0% panel only) ─────────────────────────────── 
+  # ── KPI label (once, in the 0% panel only) ──────────────────────────────── 
   geom_label(
     data    = cpif_sek %>% filter(year == 2025, level == "0%"),
-    mapping = aes(x = year, y = cpif_salary, label = "CPIF\nbaseline"),
+    mapping = aes(x = year, y = cpif_salary, label = "KPI\nbaseline"),
     hjust   = -0.08, size = 2.6, colour = GU_RED,
     fill    = "white", linewidth = 0.3, label.padding = unit(0.15, "lines"),
     label.r = unit(0.1, "lines")
@@ -638,12 +639,12 @@ p_spotlight_sek <- ggplot() +
     subtitle = paste0(
       "Monthly salary in SEK. \u2014  ",
       "\u25ac\u25ac Blue = \u00d6vriga doktorander (Hum/Soc.sci)    ",
-      "\u25ac\u25ac Red dashed = 2022 salary \u00d7 CPIF (inflation baseline)    ",
+      "\u25ac\u25ac Red dashed = 2022 salary \u00d7 KPI (inflation baseline)    ",
       "\u25ac\u25ac Gray = all other PhD groups"
     ),
     x       = NULL,
     y       = "Monthly salary (SEK)",
-    caption = "Source: GU salary agreements; SCB CPIF Oct-to-Oct: +6.5% (2023), +1.6% (2024), +1.2% (2025 prelim.)"
+    caption = "Source: GU salary agreements; SCB KPI skuggindex Oct-to-Oct: +6.5% (2023), +1.6% (2024), +0.9% (2025)"
   ) +
   theme_minimal(base_size = 12) +
   theme(
